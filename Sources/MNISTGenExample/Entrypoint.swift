@@ -1,5 +1,6 @@
 import Cocoa
 import Foundation
+import HCBacktrace
 import Honeycrisp
 import MNIST
 
@@ -35,13 +36,14 @@ class RoPE {
     cache = Tensor(stack: [args.cos(), args.sin()], axis: -1)
   }
 
-  func callAsFunction(_ x: Tensor, offset: Int = 0) -> Tensor {
+  @recordCaller
+  private func _callAsFunction(_ x: Tensor, offset: Int = 0) -> Tensor {
     assert(x.shape.count == 4, "expected [B x H x T x C]")
 
     let cache = self.cache[offset..<(x.shape[2] + offset)]
 
     let x2D = x.reshape(Array(x.shape[..<3]) + [x.shape[3] / 2, 2])  // [B x H x T x C/2 x 2]
-    let shapedCache = cache.reshape([x2D.shape[2], x2D.shape[3], 2]).expand(as: x2D)
+    let shapedCache = cache.reshape([x2D.shape[2], x2D.shape[3], 2])
     let x0 = x2D[..., ..., ..., ..., 0]
     let x1 = x2D[..., ..., ..., ..., 1]
     let r0 = shapedCache[..., ..., 0]
@@ -99,7 +101,8 @@ class Attention: Trainable {
     self.outProj = Linear(inCount: ModelDim, outCount: ModelDim)
   }
 
-  func callAsFunction(_ x: Tensor, kvCache: KVCache.Layer? = nil) -> Tensor {
+  @recordCaller
+  private func _callAsFunction(_ x: Tensor, kvCache: KVCache.Layer? = nil) -> Tensor {
     // Go from [B x T x C] -> [B x H x T x C/H]
     func moveHeadsToOuter(_ x: Tensor) -> Tensor {
       x.reshape([x.shape[0], x.shape[1], ModelDim / HeadDim, HeadDim])[
@@ -155,7 +158,8 @@ class Block: Trainable {
     self.lin2 = Linear(inCount: ModelDim * 2, outCount: ModelDim)
   }
 
-  func callAsFunction(_ x: Tensor, kvCache: KVCache.Layer? = nil) -> Tensor {
+  @recordCaller
+  private func _callAsFunction(_ x: Tensor, kvCache: KVCache.Layer? = nil) -> Tensor {
     var h = x
     h = h + attn(norm1(h), kvCache: kvCache)
     h = h + lin2(lin1(norm2(h)).gelu())
@@ -181,7 +185,8 @@ class Transformer: Trainable {
     unembed.weight = unembed.weight.noGrad() * 0
   }
 
-  func callAsFunction(_ x: Tensor, kvCache: KVCache? = nil) -> Tensor {
+  @recordCaller
+  private func _callAsFunction(_ x: Tensor, kvCache: KVCache? = nil) -> Tensor {
     // Input should be a [N x T] tensor of indices
     var h = embed.gather(axis: 0, indices: x.flatten()).reshape([
       x.shape[0], x.shape[1], -1,

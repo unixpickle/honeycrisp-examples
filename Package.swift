@@ -56,6 +56,7 @@ let package = Package(
       dependencies: [
         "MNIST",
         .product(name: "Honeycrisp", package: "honeycrisp"),
+        .product(name: "HCBacktrace", package: "honeycrisp"),
       ]),
   ]
 )
