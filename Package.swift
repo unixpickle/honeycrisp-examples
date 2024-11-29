@@ -17,7 +17,7 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0"..<"4.0.0"),
     .package(url: "https://github.com/1024jp/GzipSwift", "6.0.0"..<"6.1.0"),
     .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.9.0"),
-    .package(url: "https://github.com/unixpickle/honeycrisp.git", from: "0.0.7"),
+    .package(url: "https://github.com/unixpickle/honeycrisp.git", from: "0.0.11"),
   ],
   targets: [
     .executableTarget(
