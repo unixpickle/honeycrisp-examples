@@ -3,7 +3,7 @@ import Crypto
 import Foundation
 import Gzip
 
-public struct MNISTDataset {
+public struct MNISTDataset: Sendable {
 
   public enum MNISTError: Error {
     case bodyError
@@ -13,7 +13,7 @@ public struct MNISTDataset {
     case incorrectHash(String)
   }
 
-  public struct Image {
+  public struct Image: Sendable {
     public let pixels: [UInt8]
     public let label: Int
   }

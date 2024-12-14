@@ -206,6 +206,7 @@ class Transformer: Trainable {
     return h
   }
 
+  @MainActor
   func sample(firstTokens: Tensor) async throws -> Tensor {
     assert(firstTokens.shape.count == 2, "\(firstTokens.shape)")
     assert(firstTokens.shape[1] == 1, "\(firstTokens.shape)")
@@ -221,6 +222,7 @@ class Transformer: Trainable {
     return Tensor(concat: outputs, axis: 1)
   }
 
+  @MainActor
   func paramNorm() async throws -> Float {
     try await parameters.map { (_, param) in param.data!.pow(2).sum() }
       .reduce(
@@ -228,6 +230,7 @@ class Transformer: Trainable {
       ).sqrt().item()
   }
 
+  @MainActor
   func gradNorm() async throws -> Float {
     var sum = Tensor(zeros: [])
     for (name, param) in parameters {
