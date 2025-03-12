@@ -102,7 +102,7 @@ public struct MNISTDataset: Sendable {
       }
       try Data(data).write(to: path)
     }
-    return try MNISTDataset(fromDir: toDir)
+    return try MNISTDataset(fromDir: toDir, source: source)
   }
 
   private static func decodeDataset(intensities: Data, labels: Data) throws -> [Image] {
