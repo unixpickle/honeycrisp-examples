@@ -5,6 +5,41 @@ import Gzip
 
 public struct MNISTDataset: Sendable {
 
+  /// A source of MNIST-formatted data.
+  ///
+  /// This specifies the URL to download files, and the hashes of the files.
+  public struct Source {
+    public let baseURL: String
+    public let resources: [(String, String)]
+
+    /// The official MNIST dataset.
+    public static let mnist = Self(
+      baseURL: "https://ossci-datasets.s3.amazonaws.com/mnist/",
+      resources: [
+        ("train-images-idx3-ubyte.gz", "f68b3c2dcbeaaa9fbdd348bbdeb94873"),
+        ("train-labels-idx1-ubyte.gz", "d53e105ee54ea40749a09fcbcd1e9432"),
+        ("t10k-images-idx3-ubyte.gz", "9fb629c4189551a2d022fa330f9573f3"),
+        ("t10k-labels-idx1-ubyte.gz", "ec29112dd5afa0611ce80d1b7f02629c"),
+      ]
+    )
+
+    /// The Fashion-MNIST dataset (https://github.com/zalandoresearch/fashion-mnist)
+    public static let fashionMNIST = Self(
+      baseURL: "http://fashion-mnist.s3-website.eu-central-1.amazonaws.com/",
+      resources: [
+        ("train-images-idx3-ubyte.gz", "8d4fb7e6c68d591d4c3dfef9ec88bf0d"),
+        ("train-labels-idx1-ubyte.gz", "25c81989df183df01b3e8a0aad5dffbe"),
+        ("t10k-images-idx3-ubyte.gz", "bef4ecab320f06d8554ea6380940ec79"),
+        ("t10k-labels-idx1-ubyte.gz", "bb300cfdad3c16e7a12a480ee83cd310"),
+      ]
+    )
+
+    public init(baseURL: String, resources: [(String, String)]) {
+      self.baseURL = baseURL
+      self.resources = resources
+    }
+  }
+
   public enum MNISTError: Error {
     case bodyError
     case unexpectedResolution
@@ -21,18 +56,10 @@ public struct MNISTDataset: Sendable {
   public let train: [Image]
   public let test: [Image]
 
-  public static let downloadURL = "https://ossci-datasets.s3.amazonaws.com/mnist/"
-  public static let resources = [
-    ("train-images-idx3-ubyte.gz", "f68b3c2dcbeaaa9fbdd348bbdeb94873"),
-    ("train-labels-idx1-ubyte.gz", "d53e105ee54ea40749a09fcbcd1e9432"),
-    ("t10k-images-idx3-ubyte.gz", "9fb629c4189551a2d022fa330f9573f3"),
-    ("t10k-labels-idx1-ubyte.gz", "ec29112dd5afa0611ce80d1b7f02629c"),
-  ]
-
-  init(fromDir dirPath: String) throws {
+  init(fromDir dirPath: String, source: Source = .mnist) throws {
     let baseInURL = URL.init(fileURLWithPath: dirPath)
     var mapping = [String: Data]()
-    for (filename, hash) in MNISTDataset.resources {
+    for (filename, hash) in source.resources {
       let path = baseInURL.appendingPathComponent(filename)
       let data = try Data(contentsOf: path)
       let hexDigest = MNISTDataset.checksum(data)
@@ -53,16 +80,16 @@ public struct MNISTDataset: Sendable {
     )
   }
 
-  public static func download(toDir: String) async throws -> MNISTDataset {
+  public static func download(toDir: String, source: Source = .mnist) async throws -> MNISTDataset {
     let baseOutURL = URL.init(fileURLWithPath: toDir).standardizedFileURL
 
     try FileManager.default.createDirectory(atPath: toDir, withIntermediateDirectories: true)
-    for (filename, hash) in resources {
+    for (filename, hash) in source.resources {
       let path = baseOutURL.appendingPathComponent(filename)
       if FileManager.default.fileExists(atPath: path.path) {
         continue
       }
-      let request = HTTPClientRequest(url: "\(downloadURL)\(filename)")
+      let request = HTTPClientRequest(url: "\(source.baseURL)\(filename)")
       let response = try await HTTPClient.shared.execute(request, timeout: .seconds(30))
       let body = try await response.body.collect(upTo: 1 << 27)
       guard let data = body.getBytes(at: 0, length: body.readableBytes) else {
